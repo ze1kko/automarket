@@ -1,0 +1,204 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <title>Профиль пользователя</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+</head>
+<body class="bg-light">
+<nav class="navbar navbar-light bg-white border-bottom sticky-top">
+    <div class="container d-flex justify-content-between align-items-center">
+        
+        <a class="navbar-brand fw-bold fs-4" href="/">
+            🚗 AutoMarket
+        </a>
+
+        <div class="d-flex gap-2 align-items-center" id="auth-buttons"></div>
+    </div>
+</nav>
+
+<div class="container">
+    <div class="row">
+        <div class="col-md-4">
+            <div class="card p-3 shadow-sm text-center border-0 mb-4">
+                <div class="text-center mb-3">
+    <img id="avatar-img"
+         src="https://via.placeholder.com/80"
+         class="rounded-circle"
+         style="width: 80px; height: 80px; object-fit: cover; cursor: pointer;">
+    
+    <input type="file" id="avatar-input" style="display:none;" accept="image/*">
+</div>
+                <h4 id="profile-name">Загрузка...</h4>
+                <p class="text-muted" id="profile-reg-date">На сайте с: ...</p>
+                <div class="mb-3">
+                    <span class="badge bg-warning text-dark">Рейтинг: <span id="profile-rating">0.0</span> ★</span>
+                </div>
+                <hr>
+                <!-- Эта кнопка видна только владельцу профиля -->
+                <div id="owner-actions" style="display: none;">
+                    <a href="/admin" class="btn btn-primary w-100">Выставить авто на продажу</a>
+                </div>
+            </div>
+
+            <!-- Форма отзыва (скрыта для владельца) -->
+            <div id="review-form-container"></div>
+        </div>
+
+        <div class="col-md-8">
+            <h3>Объявления продавца</h3>
+            <div id="my-cars" class="row mb-5"></div>
+
+            <hr>
+            <h4 class="mb-3">Отзывы</h4>
+            <div id="reviews-list"></div>
+        </div>
+    </div>
+</div>
+
+<script>
+// Определяем, чей профиль смотрим
+const pathId = window.location.pathname.split('/').pop();
+const myId = localStorage.getItem('user_id');
+const targetUserId = (pathId && !isNaN(pathId)) ? pathId : myId;
+
+async function loadProfile() {
+    if (!targetUserId) { window.location.href = '/login'; return; }
+
+    const response = await fetch(`/api/profile/${targetUserId}`);
+    const data = await response.json();
+
+    document.getElementById('profile-name').innerText = data.username;
+    document.getElementById('profile-reg-date').innerText = `На сайте с: ${data.reg_date}`;
+    document.getElementById('profile-rating').innerText = data.rating || "5.0";
+
+    // Если это МОЙ профиль — показываем кнопку продажи
+    if (targetUserId == myId) {
+        document.getElementById('owner-actions').style.display = 'block';
+    } else {
+        renderReviewForm();
+    }
+    if (data.avatar_url) {
+    document.getElementById('avatar-img').src = data.avatar_url;
+}
+
+    // Рендер машин
+    const carsList = document.getElementById('my-cars');
+    carsList.innerHTML = data.cars.length ? '' : '<p class="text-muted">Нет активных объявлений.</p>';
+    
+    data.cars.forEach(car => {
+        const deleteBtn = (targetUserId == myId) 
+            ? `<button class="btn btn-danger btn-sm" onclick="deleteCar(${car.id})">Снять с продажи</button>` 
+            : '';
+        
+        carsList.innerHTML += `
+            <div class="col-md-6 mb-3">
+                <div class="card h-100 shadow-sm border-0">
+                    <div class="card-body">
+                        <h6>${car.brand} ${car.model}</h6>
+                        <p class="small text-primary fw-bold">${car.price.toLocaleString()} ₽</p>
+                        <a href="/car/${car.id}" class="btn btn-link btn-sm p-0 me-2 text-decoration-none">Просмотр</a>
+                        ${deleteBtn}
+                    </div>
+                </div>
+            </div>`;
+    });
+
+    loadReviews();
+}
+
+function renderReviewForm() {
+    if (!myId) return; // Если не залогинен, форму не показываем
+    document.getElementById('review-form-container').innerHTML = `
+        <div class="card p-3 shadow-sm border-0">
+            <h6>Оставить отзыв</h6>
+            <select id="rev-rating" class="form-select form-select-sm mb-2">
+                <option value="5">⭐⭐⭐⭐⭐ (5)</option>
+                <option value="4">⭐⭐⭐⭐ (4)</option>
+                <option value="3">⭐⭐⭐ (3)</option>
+                <option value="2">⭐⭐ (2)</option>
+                <option value="1">⭐ (1)</option>
+            </select>
+            <textarea id="rev-text" class="form-control form-control-sm mb-2" rows="3" placeholder="Ваш отзыв..."></textarea>
+            <button onclick="sendReview()" class="btn btn-success btn-sm w-100">Отправить</button>
+        </div>`;
+}
+
+async function sendReview() {
+    const rating = document.getElementById('rev-rating').value;
+    const text = document.getElementById('rev-text').value;
+
+    const res = await fetch('/api/reviews', {
+        method: 'POST',
+        headers: {'Content-Type': 'application/json'},
+        body: JSON.stringify({
+            author_id: myId,
+            seller_id: targetUserId,
+            rating: parseInt(rating),
+            text: text
+        })
+    });
+    if (res.ok) { alert('Отзыв добавлен!'); location.reload(); }
+}
+
+async function loadReviews() {
+    const res = await fetch(`/api/reviews/${targetUserId}`);
+    const reviews = await res.json();
+    const list = document.getElementById('reviews-list');
+    
+    list.innerHTML = reviews.length ? reviews.map(r => `
+        <div class="card mb-2 p-3 border-0 shadow-sm bg-white">
+            <div class="d-flex justify-content-between">
+                <small class="fw-bold">${r.author_name}</small>
+                <small class="text-warning">${'★'.repeat(r.rating)}</small>
+            </div>
+            <div class="small text-secondary">${r.text}</div>
+        </div>
+    `).join('') : '<p class="text-muted small">Отзывов пока нет.</p>';
+}
+
+async function deleteCar(id) {
+    if (!confirm('Вы точно хотите снять объявление?')) return;
+    const res = await fetch(`/api/cars/${id}`, { method: 'DELETE' });
+    if (res.ok) loadProfile();
+}
+
+function logout() { localStorage.clear(); window.location.href = '/login'; }
+
+const avatarImg = document.getElementById('avatar-img');
+const avatarInput = document.getElementById('avatar-input');
+
+avatarImg.onclick = () => avatarInput.click();
+
+avatarInput.onchange = async () => {
+    const file = avatarInput.files[0];
+    const userId = localStorage.getItem('user_id');
+
+    if (!file) return;
+
+    const formData = new FormData();
+    formData.append('file', file);
+    formData.append('user_id', userId);
+
+    try {
+        const res = await fetch('/upload-avatar', {
+            method: 'POST',
+            body: formData
+        });
+
+        const data = await res.json();
+
+        if (res.ok) {
+            avatarImg.src = data.avatar_url + '?t=' + Date.now(); // обновление без кеша
+        } else {
+            alert("Ошибка загрузки");
+        }
+    } catch (e) {
+        alert("Ошибка соединения");
+    }
+};
+
+loadProfile();
+</script>
+</body>
+</html>

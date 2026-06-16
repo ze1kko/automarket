@@ -1,0 +1,218 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <title>Автосалон - Дипломный проект</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <style>
+body {
+    background: linear-gradient(135deg, #f5f7fa, #e4ecf7);
+}
+
+.card {
+    border-radius: 12px;
+}
+
+.car-card:hover {
+    transform: translateY(-6px) scale(1.01);
+}
+
+h2 {
+    font-weight: 700;
+}
+    </style>
+</head>
+<body class="bg-light">
+
+<nav class="navbar navbar-light bg-white border-bottom sticky-top">
+    <div class="container d-flex justify-content-between align-items-center">
+        
+        <a class="navbar-brand fw-bold fs-4" href="/">
+            🚗 AutoMarket
+        </a>
+
+        <div class="d-flex gap-2 align-items-center" id="auth-buttons"></div>
+    </div>
+</nav>
+<div class="container">
+    <div class="row">
+        <div class="col-md-3">
+            <div class="card shadow-sm p-3 mb-4 sticky-top" style="top: 20px;">
+                <h5 class="mb-3">Фильтры</h5>
+                <div class="mb-3">
+                    <label class="form-label small fw-bold">Марка</label>
+                    <input type="text" id="filter-brand" class="form-control form-control-sm" placeholder="Напр: BMW">
+                </div>
+                <div class="mb-3">
+                    <label class="form-label small fw-bold">Цена (₽)</label>
+                    <div class="d-flex gap-2">
+                        <input type="number" id="filter-min-price" class="form-control form-control-sm" placeholder="От">
+                        <input type="number" id="filter-max-price" class="form-control form-control-sm" placeholder="До">
+                    </div>
+                </div>
+                <div class="mb-3">
+                    <label class="form-label small fw-bold">Сортировка</label>
+                    <select id="filter-sort" class="form-select form-select-sm">
+                        <option value="newest">Сначала новые</option>
+                        <option value="price_asc">Дешевле</option>
+                        <option value="price_desc">Дороже</option>
+                    </select>
+                </div>
+                <button id="filter-apply-btn" onclick="applyFilters()" class="btn btn-primary btn-sm w-100">Применить</button>
+                <button onclick="resetFilters()" class="btn btn-link btn-sm w-100 mt-2 text-decoration-none text-muted">Сбросить</button>
+            </div>
+        </div>
+
+        <div class="col-md-9">
+            <div class="d-flex justify-content-between align-items-center mb-4">
+                <h2>Наши автомобили</h2>
+            </div>
+            
+            <div class="input-group mb-4 shadow-sm">
+                <input type="text" id="search-input" class="form-control" placeholder="Поиск по модели или описанию...">
+                <button id="search-btn" onclick="searchCars()" class="btn btn-primary">Найти</button>
+            </div>
+
+            <div id="car-list" class="row">
+                <div class="text-center p-5">
+                    <div class="spinner-border text-primary" role="status"></div>
+                    <p class="mt-2">Загрузка автомобилей...</p>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+function checkAuth() {
+    const username = localStorage.getItem('username');
+    const authDiv = document.getElementById('auth-buttons');
+
+    if (username && username !== "undefined" && username !== "null") {
+        authDiv.innerHTML = `
+            <span class="me-3">👤 ${username}</span>
+            <a href="/profile" class="btn btn-primary btn-sm">Профиль</a>
+            <button onclick="logout()" class="btn btn-outline-danger btn-sm ms-2">Выйти</button>
+        `;
+    } else {
+        authDiv.innerHTML = `
+            <a href="/login" class="btn btn-outline-primary btn-sm">Вход</a>
+        `;
+    }
+}
+
+function logout() {
+    localStorage.clear();
+    location.reload();
+}
+
+checkAuth();
+</script>
+
+<script>
+    // Запускаем загрузку при открытии страницы
+    loadCars();
+function searchCars() {
+    // Просто берем значение из верхнего поиска и кладем его в фильтр слева
+    const searchVal = document.getElementById('search-input').value;
+    document.getElementById('filter-brand').value = searchVal;
+    
+    // И запускаем общую фильтрацию
+    applyFilters();
+}
+
+// Измени заголовок функции loadCars, чтобы она принимала параметр
+async function loadCars(params = '') {
+    const listElement = document.getElementById('car-list');
+    try {
+        const response = await fetch(`/cars?${params}`);
+        const cars = await response.json();
+        listElement.innerHTML = '';
+
+        if (cars.length === 0) {
+            listElement.innerHTML = '<div class="col-12 text-center mt-5"><h5>Машин не найдено 🚗💨</h5></div>';
+            return;
+        }
+
+        cars.forEach(car => {
+            // Используем обратные кавычки `
+            const carHtml = `
+                <div class="col-md-6 col-lg-4 mb-4">
+                    <a href="/car/${car.id}" class="text-decoration-none color-inherit">
+                        <div class="card h-100 shadow-sm car-card border-0">
+                            <div style="position: relative;">
+                                <img src="${car.image_url}" class="card-img-top" style="height: 180px; object-fit: cover;">
+                                <span class="badge bg-dark" style="position: absolute; top: 10px; right: 10px;">
+                            </div>
+                            <div class="card-body">
+                                <h5 class="card-title text-dark mb-1">${car.brand} ${car.model}</h5>
+                                <h4 class="text-primary mb-3">${car.price.toLocaleString()} ₽</h4>
+                                <div class="d-flex justify-content-between align-items-center mt-auto border-top pt-2">
+                                    <small class="text-muted">👤 ${car.owner_name}</small>
+                                    <small class="text-warning">★ ${car.owner_rating}</small>
+                                </div>
+                            </div>
+                        </div>
+                    </a>
+                </div>
+            `;
+            listElement.innerHTML += carHtml;
+        });
+    } catch (e) {
+        listElement.innerHTML = '<p class="text-danger">Ошибка загрузки данных</p>';
+    }
+}
+
+function applyFilters() {
+    const params = new URLSearchParams();
+    const brand = document.getElementById('filter-brand').value;
+    const min = document.getElementById('filter-min-price').value;
+    const max = document.getElementById('filter-max-price').value;
+    const sort = document.getElementById('filter-sort').value;
+
+    if (brand) params.append('brand', brand);
+    if (min) params.append('min_price', min);
+    if (max) params.append('max_price', max);
+    params.append('sort_by', sort);
+
+    loadCars(params.toString());
+}
+
+// Новая функция для удаления
+async function deleteCar(id) {
+    if (!confirm('Вы точно хотите удалить этот автомобиль?')) return;
+
+    try {
+        const response = await fetch(`/cars/${id}`, { method: 'DELETE' });
+        if (response.ok) {
+            // Убираем карточку с экрана без перезагрузки страницы
+            document.getElementById(`car-card-${id}`).remove();
+            alert('Машина удалена из базы');
+        }
+    } catch (error) {
+        alert('Не удалось удалить машину');
+    }
+}
+
+// Функция, которая заставляет Enter работать как клик по кнопке
+function enableEnterKey(inputId, buttonId) {
+    const input = document.getElementById(inputId);
+    if (input) {
+        input.addEventListener("keypress", function(event) {
+            if (event.key === "Enter") {
+                event.preventDefault(); // Чтобы страница не перезагрузилась
+                document.getElementById(buttonId).click(); // Имитируем нажатие кнопки
+            }
+        });
+    }
+}
+
+// Применяем это к поиску и к фильтрам
+enableEnterKey("search-input", "search-btn"); // Убедись, что у кнопки поиска есть id="search-btn"
+enableEnterKey("filter-brand", "filter-apply-btn"); // Убедись, что у кнопки фильтра есть id="filter-apply-btn"
+
+loadCars();
+</script>
+
+</body>
+</html>

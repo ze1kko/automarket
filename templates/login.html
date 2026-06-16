@@ -1,0 +1,69 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Вход — AutoMarket</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <style>
+        body { background-color: #f8f9fa; }
+        .login-card { max-width: 400px; margin-top: 100px; }
+    </style>
+</head>
+<body>
+
+    <div class="container d-flex justify-content-center">
+        <div class="card login-card p-4 shadow w-100">
+            <h3 class="text-center mb-4">Вход</h3>
+            <form id="loginForm">
+                <div class="mb-3">
+                    <label class="form-label">Логин</label>
+                    <input type="text" id="username" class="form-control" placeholder="Введите логин" required>
+                </div>
+                <div class="mb-3">
+                    <label class="form-label">Пароль</label>
+                    <input type="password" id="password" class="form-control" placeholder="Введите пароль" required>
+                </div>
+                <button type="submit" class="btn btn-primary w-100">Войти</button>
+            </form>
+            <div class="text-center mt-3">
+                <small>Нет аккаунта? <a href="/register">Зарегистрироваться</a></small>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        document.getElementById('loginForm').onsubmit = async (e) => {
+            e.preventDefault();
+            
+            const username = document.getElementById('username').value;
+            const password = document.getElementById('password').value;
+
+            try {
+                // Отправляем запрос на авторизацию
+                const res = await fetch(`/login?username=${username}&password=${password}`, { 
+                    method: 'POST' 
+                });
+
+                const data = await res.json();
+
+                if (res.ok) {
+                    // Очищаем старые данные и сохраняем актуальные
+                    localStorage.clear();
+                    localStorage.setItem('user_id', data.user_id); 
+                    localStorage.setItem('username', data.username);
+                    
+                    alert("Вы успешно вошли!");
+                    window.location.href = '/'; // Переход на главную
+                } else {
+                    alert(data.detail || "Неверный логин или пароль");
+                }
+            } catch (error) {
+                console.error("Ошибка запроса:", error);
+                alert("Ошибка соединения с сервером");
+            }
+        };
+    </script>
+
+</body>
+</html>

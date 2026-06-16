@@ -1,0 +1,76 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Регистрация — AutoMarket</title>
+    <!-- Используем Bootstrap для красоты, как в остальном проекте -->
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <style>
+        body { background-color: #f8f9fa; }
+        .register-card { max-width: 400px; margin-top: 100px; }
+    </style>
+</head>
+<body>
+
+    <div class="container d-flex justify-content-center">
+        <div class="card register-card p-4 shadow w-100">
+            <h3 class="text-center mb-4">Регистрация</h3>
+            <form id="registerForm">
+                <div class="mb-3">
+                    <label class="form-label">Логин</label>
+                    <input type="text" id="username" class="form-control" placeholder="Придумайте логин" required>
+                </div>
+                <div class="mb-3">
+                    <label class="form-label">Пароль</label>
+                    <input type="password" id="password" class="form-control" placeholder="минимум 6 символов" required>
+                </div>
+                <div class="mb-3">
+                    <label class="form-label">Номер телефона</label>
+                    <input type="text" id="phone" class="form-control" placeholder="+7 (999) 000-00-00" required>
+                </div>
+                <button type="submit" class="btn btn-primary w-100">Создать аккаунт</button>
+            </form>
+            <div class="text-center mt-3">
+                <small>Уже есть аккаунт? <a href="/login">Войти</a></small>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        document.getElementById('registerForm').onsubmit = async (e) => {
+            e.preventDefault();
+            
+            const username = document.getElementById('username').value;
+            const password = document.getElementById('password').value;
+            const phone = document.getElementById('phone').value;
+
+            try {
+                const res = await fetch('/register', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ username, password, phone })
+                });
+
+                const data = await res.json();
+
+                if (res.ok) {
+                    // Очень важно: очищаем старые данные и записываем новые[cite: 2]
+                    localStorage.clear();
+                    localStorage.setItem('user_id', data.user_id); 
+                    localStorage.setItem('username', data.username || username);
+                    
+                    alert("Регистрация прошла успешно!");
+                    window.location.href = '/'; // Перенаправляем на главную
+                } else {
+                    alert(data.detail || "Ошибка при регистрации");
+                }
+            } catch (error) {
+                console.error("Ошибка запроса:", error);
+                alert("Не удалось связаться с сервером");
+            }
+        };
+    </script>
+
+</body>
+</html>

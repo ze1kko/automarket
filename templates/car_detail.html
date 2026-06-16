@@ -1,0 +1,81 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <title>Детали автомобиля</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+</head>
+<body class="bg-light">
+<nav class="navbar navbar-light bg-white border-bottom sticky-top">
+    <div class="container d-flex justify-content-between align-items-center">
+        
+        <a class="navbar-brand fw-bold fs-4" href="/">
+            🚗 AutoMarket
+        </a>
+
+        <div class="d-flex gap-2 align-items-center" id="auth-buttons"></div>
+    </div>
+</nav>
+<div class="container py-4">
+    <div class="row">
+        <div class="col-md-8">
+            <div class="card shadow-sm border-0 mb-4">
+                <img id="car-img" src="" class="card-img-top" style="height: 450px; object-fit: cover;">
+                <div class="card-body">
+                    <h2 id="car-title" class="fw-bold">Загрузка...</h2>
+                    <p id="car-meta" class="text-muted"></p>
+                    <h3 id="car-price" class="text-primary fw-bold"></h3>
+                    <hr>
+                    <h5>Описание</h5>
+                    <p id="car-desc" class="text-secondary"></p>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-4">
+            <div class="card p-3 shadow-sm border-0">
+                <button id="btn-phone" onclick="showPhone()" class="btn btn-primary w-100 mb-2 fw-bold">Показать телефон</button>
+                <a id="btn-wa" href="#" target="_blank" class="btn btn-outline-success w-100 mb-3 fw-bold">Написать в WhatsApp</a>
+                <div class="pt-3 border-top text-center">
+                    <small class="text-muted d-block">Продавец:</small>
+                    <!-- Ссылка на профиль -->
+                    <a id="owner-link" href="#" class="fw-bold text-decoration-none fs-5">
+                        <span id="owner-name">...</span>
+                    </a>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+const carId = window.location.pathname.split('/').pop() || new URLSearchParams(window.location.search).get('id');
+let currentCar = null;
+
+async function loadData() {
+    try {
+        const res = await fetch(`/api/cars/${carId}`);
+        currentCar = await res.json();
+
+        document.getElementById('car-title').innerText = `${currentCar.brand} ${currentCar.model}`;
+        document.getElementById('car-price').innerText = (currentCar.price || 0).toLocaleString() + ' ₽';
+        document.getElementById('car-desc').innerText = currentCar.description;
+        document.getElementById('car-img').src = currentCar.image;
+        document.getElementById('car-meta').innerText = `${currentCar.year}г. | ${currentCar.mileage || 0} км`;
+        document.getElementById('owner-name').innerText = currentCar.owner_name;
+        
+        // Настройка ссылок
+        document.getElementById('owner-link').href = `/profile/${currentCar.owner_id}`;
+        if (currentCar.owner_phone) {
+            const phone = currentCar.owner_phone.replace(/\D/g, '');
+            document.getElementById('btn-wa').href = `https://wa.me/${phone}`;
+        }
+    } catch (e) { console.error(e); }
+}
+
+function showPhone() {
+    if (currentCar) document.getElementById('btn-phone').innerText = currentCar.owner_phone;
+}
+loadData();
+</script>
+</body>
+</html>
